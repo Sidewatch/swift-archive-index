@@ -16,7 +16,6 @@ struct ByteReader {
     /// Reads are relative to the data's own start whatever its `startIndex` (a slice's is not 0).
     private var base: Int { data.startIndex }
 
-    func u8(_ at: Int) -> Int? { at >= 0 && at < data.count ? Int(data[base + at]) : nil }
     func u16(_ at: Int) -> Int? {
         guard at >= 0, at + 2 <= data.count else { return nil }
         return Int(data[base + at]) | Int(data[base + at + 1]) << 8
