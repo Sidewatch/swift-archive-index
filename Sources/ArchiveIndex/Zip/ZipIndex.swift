@@ -61,7 +61,8 @@ public enum ZipIndex {
     public static func data(for entry: ArchiveEntry, in data: Data) throws -> Data {
         let r = ByteReader(data: data)
         guard r.u32(entry.offset) == localSignature, let flags = r.u16(entry.offset + 6),
-              let nameLength = r.u16(entry.offset + 26), let extraLength = r.u16(entry.offset + 28) else { throw ArchiveError.truncated }
+            let nameLength = r.u16(entry.offset + 26), let extraLength = r.u16(entry.offset + 28)
+        else { throw ArchiveError.truncated }
         if flags & 1 != 0 { throw ArchiveError.encrypted }
         let start = entry.offset + 30 + nameLength + extraLength
         guard let raw = r.bytes(start, entry.compressedSize) else { throw ArchiveError.truncated }
@@ -69,7 +70,9 @@ public enum ZipIndex {
         case .stored: return raw
         case .deflate:
             if entry.compressedSize == 0 { return Data() }
-            guard let inflated = try? (raw as NSData).decompressed(using: .zlib) as Data, inflated.count == entry.size else { throw ArchiveError.corruptMember }
+            guard let inflated = try? (raw as NSData).decompressed(using: .zlib) as Data, inflated.count == entry.size else {
+                throw ArchiveError.corruptMember
+            }
             return inflated
         case .other(let m): throw ArchiveError.unsupportedMethod(m)
         }
@@ -100,32 +103,39 @@ public enum ZipIndex {
     /// The central directory's offset and entry count, from the end record or — when it carries
     /// the ZIP64 markers — from the 64-bit end record its locator names.
     static func directoryLocation(_ r: ByteReader, endRecord end: Int) throws -> (offset: Int, count: Int) {
-        guard let count16 = r.u16(end + 10), let size32 = r.u32(end + 12), let offset32 = r.u32(end + 16) else { throw ArchiveError.truncated }
+        guard let count16 = r.u16(end + 10), let size32 = r.u32(end + 12), let offset32 = r.u32(end + 16) else {
+            throw ArchiveError.truncated
+        }
         if count16 != 0xFFFF, size32 != 0xFFFF_FFFF, offset32 != 0xFFFF_FFFF { return (offset32, count16) }
         let locator = end - 20
         guard r.u32(locator) == end64LocatorSignature, let end64 = r.u64(locator + 8), r.u32(end64) == end64Signature,
-              let count = r.u64(end64 + 32), let offset = r.u64(end64 + 48) else { throw ArchiveError.notAnArchive }
+            let count = r.u64(end64 + 32), let offset = r.u64(end64 + 48)
+        else { throw ArchiveError.notAnArchive }
         return (offset, count)
     }
 
     /// One central-directory header at `pos`, advancing `pos` past it.
     static func header(_ r: ByteReader, at pos: inout Int) -> ArchiveEntry? {
         guard r.u32(pos) == centralSignature, let flags = r.u16(pos + 8), let method = r.u16(pos + 10),
-              let time = r.u16(pos + 12), let date = r.u16(pos + 14), let comp32 = r.u32(pos + 20), let size32 = r.u32(pos + 24),
-              let nameLength = r.u16(pos + 28), let extraLength = r.u16(pos + 30), let commentLength = r.u16(pos + 32),
-              let attributes = r.u32(pos + 38), let local32 = r.u32(pos + 42),
-              let nameBytes = r.bytes(pos + 46, nameLength), let extra = r.bytes(pos + 46 + nameLength, extraLength) else { return nil }
+            let time = r.u16(pos + 12), let date = r.u16(pos + 14), let comp32 = r.u32(pos + 20), let size32 = r.u32(pos + 24),
+            let nameLength = r.u16(pos + 28), let extraLength = r.u16(pos + 30), let commentLength = r.u16(pos + 32),
+            let attributes = r.u32(pos + 38), let local32 = r.u32(pos + 42),
+            let nameBytes = r.bytes(pos + 46, nameLength), let extra = r.bytes(pos + 46 + nameLength, extraLength)
+        else { return nil }
         var size = size32, comp = comp32, local = local32
         if size32 == 0xFFFF_FFFF || comp32 == 0xFFFF_FFFF || local32 == 0xFFFF_FFFF {
-            let wide = zip64Fields(extra, wantSize: size32 == 0xFFFF_FFFF, wantComp: comp32 == 0xFFFF_FFFF, wantLocal: local32 == 0xFFFF_FFFF)
+            let wide = zip64Fields(
+                extra, wantSize: size32 == 0xFFFF_FFFF, wantComp: comp32 == 0xFFFF_FFFF, wantLocal: local32 == 0xFFFF_FFFF)
             size = wide.size ?? size; comp = wide.comp ?? comp; local = wide.local ?? local
         }
-        let name = (flags & 0x800 != 0 ? String(data: nameBytes, encoding: .utf8) : nil)
+        let name =
+            (flags & 0x800 != 0 ? String(data: nameBytes, encoding: .utf8) : nil)
             ?? String(data: nameBytes, encoding: .utf8) ?? String(data: nameBytes, encoding: .isoLatin1) ?? ""
         let isDirectory = name.hasSuffix("/") || (attributes & 0x10 != 0 && size == 0)
         pos += 46 + nameLength + extraLength + commentLength
-        return ArchiveEntry(path: name, size: size, compressedSize: comp, isDirectory: isDirectory,
-                            modified: dosDate(date: date, time: time), method: ArchiveMethod(zipMethod: method), offset: local)
+        return ArchiveEntry(
+            path: name, size: size, compressedSize: comp, isDirectory: isDirectory,
+            modified: dosDate(date: date, time: time), method: ArchiveMethod(zipMethod: method), offset: local)
     }
 
     /// The 64-bit values in a header's ZIP64 extra field (id 1), present only for the fields the

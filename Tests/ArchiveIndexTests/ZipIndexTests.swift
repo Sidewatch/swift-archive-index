@@ -17,7 +17,8 @@ final class ZipIndexTests: XCTestCase {
         dir = FileManager.default.temporaryDirectory.appendingPathComponent("archive-index-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: dir.appendingPathComponent("src/nested/deeper"), withIntermediateDirectories: true)
         try "hello, zip\n".write(to: dir.appendingPathComponent("src/a.txt"), atomically: true, encoding: .utf8)
-        try String(repeating: "the quick brown fox jumps over the lazy dog\n", count: 200).write(to: dir.appendingPathComponent("src/nested/b.txt"), atomically: true, encoding: .utf8)
+        try String(repeating: "the quick brown fox jumps over the lazy dog\n", count: 200).write(
+            to: dir.appendingPathComponent("src/nested/b.txt"), atomically: true, encoding: .utf8)
         try Data([0, 1, 2, 3, 0xFF]).write(to: dir.appendingPathComponent("src/nested/deeper/c.bin"))
         try "ü".write(to: dir.appendingPathComponent("src/nested/spa ce ü.md"), atomically: true, encoding: .utf8)
     }
@@ -59,7 +60,9 @@ final class ZipIndexTests: XCTestCase {
         let stored = try zip("s.zip", flags: ["-0"])
         let d = try ZipIndex.entries(at: deflated).first { $0.path == "nested/b.txt" }!
         XCTAssertEqual(d.method, .deflate)
-        XCTAssertEqual(String(data: try ZipIndex.data(for: d, in: deflated), encoding: .utf8), String(repeating: "the quick brown fox jumps over the lazy dog\n", count: 200))
+        XCTAssertEqual(
+            String(data: try ZipIndex.data(for: d, in: deflated), encoding: .utf8),
+            String(repeating: "the quick brown fox jumps over the lazy dog\n", count: 200))
         let s = try ZipIndex.entries(at: stored).first { $0.path == "nested/deeper/c.bin" }!
         XCTAssertEqual(s.method, .stored)
         XCTAssertEqual(try ZipIndex.data(for: s, in: stored), Data([0, 1, 2, 3, 0xFF]))
@@ -92,12 +95,16 @@ final class ZipIndexTests: XCTestCase {
         func le64(_ v: Int) -> [UInt8] { le32(v & 0xFFFF_FFFF) + le32(v >> 32) }
         var file = Data()
         // local header
-        file += le32(0x0403_4B50) + le16(45) + le16(0) + le16(0) + le16(0) + le16(0x21) + le32(0) + le32(body.count) + le32(body.count) + le16(name.count) + le16(0)
+        file +=
+            le32(0x0403_4B50) + le16(45) + le16(0) + le16(0) + le16(0) + le16(0x21) + le32(0) + le32(body.count) + le32(body.count)
+            + le16(name.count) + le16(0)
         file += name + body
         let cdOffset = file.count
         let extra = le16(1) + le16(24) + le64(body.count) + le64(body.count) + le64(0)
         file += le32(0x0201_4B50) + le16(45) + le16(45) + le16(0) + le16(0) + le16(0) + le16(0x21) + le32(0)
-        file += le32(0xFFFF_FFFF) + le32(0xFFFF_FFFF) + le16(name.count) + le16(extra.count) + le16(0) + le16(0) + le16(0) + le32(0) + le32(0xFFFF_FFFF)
+        file +=
+            le32(0xFFFF_FFFF) + le32(0xFFFF_FFFF) + le16(name.count) + le16(extra.count) + le16(0) + le16(0) + le16(0) + le32(0)
+            + le32(0xFFFF_FFFF)
         file += name + extra
         let cdSize = file.count - cdOffset
         let end64 = file.count
@@ -114,18 +121,24 @@ final class ZipIndexTests: XCTestCase {
     }
 
     func testRefusesWhatItCannotRead() throws {
-        XCTAssertThrowsError(try ZipIndex.entries(in: Data("not a zip at all, just text".utf8))) { XCTAssertEqual($0 as? ArchiveError, .notAnArchive) }
+        XCTAssertThrowsError(try ZipIndex.entries(in: Data("not a zip at all, just text".utf8))) {
+            XCTAssertEqual($0 as? ArchiveError, .notAnArchive)
+        }
         let url = try zip("cut.zip")
         let whole = try Data(contentsOf: url)
         XCTAssertThrowsError(try ZipIndex.entries(in: whole.prefix(whole.count - 5)), "a clipped tail has no end record")
         let entries = try ZipIndex.entries(at: url)
         let big = entries.first { $0.path == "nested/b.txt" }!
-        XCTAssertThrowsError(try ZipIndex.data(for: big, in: whole.prefix(big.offset + 40))) { XCTAssertEqual($0 as? ArchiveError, .truncated) }
-        let encrypted = ArchiveEntry(path: "x", size: 1, compressedSize: 1, isDirectory: false, modified: nil, method: .stored, offset: big.offset)
+        XCTAssertThrowsError(try ZipIndex.data(for: big, in: whole.prefix(big.offset + 40))) {
+            XCTAssertEqual($0 as? ArchiveError, .truncated)
+        }
+        let encrypted = ArchiveEntry(
+            path: "x", size: 1, compressedSize: 1, isDirectory: false, modified: nil, method: .stored, offset: big.offset)
         var flagged = whole
-        flagged[big.offset + 6] = 1   // the local header's encryption bit
+        flagged[big.offset + 6] = 1  // the local header's encryption bit
         XCTAssertThrowsError(try ZipIndex.data(for: encrypted, in: flagged)) { XCTAssertEqual($0 as? ArchiveError, .encrypted) }
-        let bzip = ArchiveEntry(path: "x", size: 1, compressedSize: 1, isDirectory: false, modified: nil, method: .other(12), offset: big.offset)
+        let bzip = ArchiveEntry(
+            path: "x", size: 1, compressedSize: 1, isDirectory: false, modified: nil, method: .other(12), offset: big.offset)
         XCTAssertThrowsError(try ZipIndex.data(for: bzip, in: whole)) { XCTAssertEqual($0 as? ArchiveError, .unsupportedMethod(12)) }
         XCTAssertFalse(ZipIndex.isZip(head: Data("PK".utf8)))
         XCTAssertNil(ArchiveKind.detect(head: Data(repeating: 0x41, count: 600)))

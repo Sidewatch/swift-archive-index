@@ -16,7 +16,9 @@ import Foundation
 public enum Archive {
     /// The format the file at `url` begins with, by its first 512 bytes, or nil.
     public static func kind(at url: URL) -> ArchiveKind? {
-        guard let handle = try? FileHandle(forReadingFrom: url), let head = try? handle.read(upToCount: TarIndex.blockSize) else { return nil }
+        guard let handle = try? FileHandle(forReadingFrom: url), let head = try? handle.read(upToCount: TarIndex.blockSize) else {
+            return nil
+        }
         return ArchiveKind.detect(head: head)
     }
 

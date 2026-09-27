@@ -21,6 +21,10 @@ public enum ArchiveMethod: Sendable, Equatable {
 
     /// The method a zip header records by number: 0 stored, 8 DEFLATE, anything else by its number.
     init(zipMethod: Int) {
-        switch zipMethod { case 0: self = .stored; case 8: self = .deflate; default: self = .other(zipMethod) }
+        switch zipMethod {
+        case 0: self = .stored;
+        case 8: self = .deflate;
+        default: self = .other(zipMethod)
+        }
     }
 }

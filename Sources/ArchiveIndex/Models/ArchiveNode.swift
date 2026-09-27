@@ -35,7 +35,9 @@ public final class ArchiveNode: @unchecked Sendable {
     /// Finishes the build, recursively: sorts children folders-first in Finder's order and sums
     /// a folder's size from what lies beneath it.
     func settle() {
-        children.sort { $0.isDirectory != $1.isDirectory ? $0.isDirectory : $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        children.sort {
+            $0.isDirectory != $1.isDirectory ? $0.isDirectory : $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+        }
         for child in children { child.settle() }
         if isDirectory { size = children.reduce(0) { $0 + $1.size } }
     }

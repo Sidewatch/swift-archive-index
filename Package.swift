@@ -5,7 +5,7 @@ let package = Package(
     name: "ArchiveIndex",
     platforms: [.macOS(.v14)],
     products: [
-        .library(name: "ArchiveIndex", targets: ["ArchiveIndex"]),
+        .library(name: "ArchiveIndex", targets: ["ArchiveIndex"])
     ],
     targets: [
         .target(name: "ArchiveIndex", path: "Sources", swiftSettings: [.swiftLanguageMode(.v6)]),

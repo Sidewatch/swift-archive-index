@@ -48,16 +48,19 @@ public enum TarIndex {
             case UInt8(ascii: "L"):
                 longName = string(data.subdata(in: (data.startIndex + dataStart)..<min(data.endIndex, data.startIndex + dataStart + size)))
             case UInt8(ascii: "x"):
-                let records = paxRecords(data.subdata(in: (data.startIndex + dataStart)..<min(data.endIndex, data.startIndex + dataStart + size)))
+                let records = paxRecords(
+                    data.subdata(in: (data.startIndex + dataStart)..<min(data.endIndex, data.startIndex + dataStart + size)))
                 if let p = records["path"] { longName = p }
                 if let s = records["size"].flatMap(Int.init) { paxSize = s }
             case 0, UInt8(ascii: "0"), UInt8(ascii: "7"), UInt8(ascii: "5"):
                 guard dataStart + size <= data.count else { throw ArchiveError.truncated }
                 let path = longName ?? name
                 let isDirectory = type == UInt8(ascii: "5") || path.hasSuffix("/")
-                out.append(ArchiveEntry(path: isDirectory && !path.hasSuffix("/") ? path + "/" : path, size: isDirectory ? 0 : size,
-                                        compressedSize: isDirectory ? 0 : size, isDirectory: isDirectory,
-                                        modified: mtimeField(block), method: .stored, offset: dataStart))
+                out.append(
+                    ArchiveEntry(
+                        path: isDirectory && !path.hasSuffix("/") ? path + "/" : path, size: isDirectory ? 0 : size,
+                        compressedSize: isDirectory ? 0 : size, isDirectory: isDirectory,
+                        modified: mtimeField(block), method: .stored, offset: dataStart))
                 longName = nil; paxSize = nil
             default:
                 longName = nil; paxSize = nil
@@ -91,7 +94,7 @@ public enum TarIndex {
     }
     /// A numeric header field: ASCII octal, or GNU base-256 when the high bit is set.
     static func octal(_ d: Data) -> Int? {
-        if let first = d.first, first & 0x80 != 0 {   // base-256 (GNU) for sizes past 8 GB
+        if let first = d.first, first & 0x80 != 0 {  // base-256 (GNU) for sizes past 8 GB
             return d.dropFirst().reduce(Int(first & 0x7F)) { $0 << 8 | Int($1) }
         }
         let text = string(d).trimmingCharacters(in: CharacterSet(charactersIn: " \0"))
