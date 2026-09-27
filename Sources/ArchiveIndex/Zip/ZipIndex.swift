@@ -17,8 +17,11 @@ import Foundation
 /// is read; spanned archives are not. `data(for:in:)` unpacks ONE member: stored bytes as they
 /// are, DEFLATE through Compression's raw-inflate; anything else is refused by name.
 public enum ZipIndex {
+    /// Record signatures (`PK\3\4`, `PK\1\2`, `PK\5\6`, and the ZIP64 locator and end record),
+    /// read as little-endian 32-bit numbers.
     static let localSignature = 0x0403_4B50, centralSignature = 0x0201_4B50
     static let endSignature = 0x0605_4B50, end64LocatorSignature = 0x0706_4B50, end64Signature = 0x0606_4B50
+    /// The end record's fixed size, and how far its trailing comment can push it from the tail.
     static let endRecordSize = 22, maxCommentLength = 0xFFFF
 
     /// Whether `head` (the file's first bytes) begins a zip: a local header, or the end record of
@@ -74,6 +77,7 @@ public enum ZipIndex {
 
     // MARK: - The directory
 
+    /// The file's bytes, memory-mapped when safe; any read failure is `notAnArchive`.
     static func mapped(_ url: URL) throws -> Data {
         guard let data = try? Data(contentsOf: url, options: .mappedIfSafe) else { throw ArchiveError.notAnArchive }
         return data

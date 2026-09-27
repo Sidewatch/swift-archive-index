@@ -25,11 +25,15 @@ public final class ArchiveNode: @unchecked Sendable {
     /// A folder's children, folders first, each group in Finder's order.
     public private(set) var children: [ArchiveNode] = []
 
+    /// A node with no children yet; ``ArchiveTree`` adds them, then calls `settle()`.
     init(name: String, path: String, isDirectory: Bool, size: Int) {
         self.name = name; self.path = path; self.isDirectory = isDirectory; self.size = size
     }
 
+    /// Adds `child` during the build.
     func append(_ child: ArchiveNode) { children.append(child) }
+    /// Finishes the build, recursively: sorts children folders-first in Finder's order and sums
+    /// a folder's size from what lies beneath it.
     func settle() {
         children.sort { $0.isDirectory != $1.isDirectory ? $0.isDirectory : $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         for child in children { child.settle() }

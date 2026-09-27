@@ -3,8 +3,8 @@
 What is inside an archive, read from its directory without unpacking it — and one member
 unpacked on demand. Zip (and every zip-shaped container: jar, war, ipa, vsix, whl, nupkg, crx,
 epub) through its central directory, ZIP64 included; uncompressed tar (ustar, pax, GNU long
-names, old v7) block by block. Extracted from [Sidewatch](https://github.com/Sidewatch) on
-24 Sep 2026, where it backs the archive preview in the app and in its Quick Look extension.
+names, old v7) block by block. Extracted from [Sidewatch](https://github.com/Sidewatch), where
+it backs the archive preview in the app and in its Quick Look extension.
 
 ```swift
 import ArchiveIndex

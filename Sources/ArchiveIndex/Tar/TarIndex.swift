@@ -16,6 +16,7 @@ import Foundation
 /// (links, devices, the pax global header) are walked over and not listed. A member's bytes are
 /// a slice at its offset — `data(for:in:)` never decompresses, because a tar never compresses.
 public enum TarIndex {
+    /// A tar header, and every member's data, occupies whole blocks of this many bytes.
     static let blockSize = 512
 
     /// Whether `head` (the file's first 512 bytes) is a tar header block.
@@ -79,13 +80,16 @@ public enum TarIndex {
 
     // MARK: - Fields
 
+    /// `length` bytes at `at` in a header block.
     static func field(_ block: Data, _ at: Int, _ length: Int) -> Data {
         block.subdata(in: (block.startIndex + at)..<(block.startIndex + at + length))
     }
+    /// A NUL-terminated header string: UTF-8, else Latin-1.
     static func string(_ d: Data) -> String {
         let cut = d.prefix { $0 != 0 }
         return String(data: cut, encoding: .utf8) ?? String(data: cut, encoding: .isoLatin1) ?? ""
     }
+    /// A numeric header field: ASCII octal, or GNU base-256 when the high bit is set.
     static func octal(_ d: Data) -> Int? {
         if let first = d.first, first & 0x80 != 0 {   // base-256 (GNU) for sizes past 8 GB
             return d.dropFirst().reduce(Int(first & 0x7F)) { $0 << 8 | Int($1) }
@@ -93,15 +97,21 @@ public enum TarIndex {
         let text = string(d).trimmingCharacters(in: CharacterSet(charactersIn: " \0"))
         return Int(text, radix: 8)
     }
+    /// Whether the header block carries the `ustar` magic.
     static func magic(_ block: Data, at: Int) -> Bool { String(decoding: field(block, at + 257, 5), as: UTF8.self) == "ustar" }
+    /// The member's name, joined to the ustar `prefix` field when there is one; nil when empty.
     static func nameField(_ block: Data, at: Int) -> String? {
         let name = string(field(block, at, 100))
         guard !name.isEmpty else { return nil }
         let prefix = magic(block, at: at) ? string(field(block, at + 345, 155)) : ""
         return prefix.isEmpty ? name : prefix + "/" + name
     }
+    /// The member's data size in bytes.
     static func sizeField(_ block: Data) -> Int { octal(field(block, 124, 12)) ?? 0 }
+    /// The member's modification time (seconds since 1970).
     static func mtimeField(_ block: Data) -> Date? { octal(field(block, 136, 12)).map { Date(timeIntervalSince1970: TimeInterval($0)) } }
+    /// Whether the header sums to its recorded checksum, the checksum field itself counted as
+    /// spaces — the only test an old v7 header (no magic) can pass.
     static func checksumValid(_ block: Data, at: Int) -> Bool {
         guard let want = octal(field(block, at + 148, 8)) else { return false }
         var sum = 0

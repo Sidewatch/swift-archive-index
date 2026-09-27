@@ -28,6 +28,7 @@ public struct ArchiveEntry: Sendable, Equatable {
     /// first byte after the header block. A reader's own bookkeeping; not for callers.
     let offset: Int
 
+    /// A member as a reader (or a test) found it; `offset` is the reader's own bookkeeping.
     public init(path: String, size: Int, compressedSize: Int, isDirectory: Bool, modified: Date?, method: ArchiveMethod, offset: Int = 0) {
         self.path = path; self.size = size; self.compressedSize = compressedSize; self.isDirectory = isDirectory
         self.modified = modified; self.method = method; self.offset = offset

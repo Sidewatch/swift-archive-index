@@ -13,9 +13,12 @@ import Foundation
 /// What `Archive.listing(at:)` answers: the format, every member, and the totals a summary line
 /// wants. `tree` folds the members through `ArchiveTree`.
 public struct ArchiveListing: Sendable {
+    /// The format the listing was read as.
     public let kind: ArchiveKind
+    /// Every member, in the archive's own order.
     public let entries: [ArchiveEntry]
 
+    /// A listing of `entries` read as `kind`.
     public init(kind: ArchiveKind, entries: [ArchiveEntry]) { self.kind = kind; self.entries = entries }
 
     /// Members that are files.

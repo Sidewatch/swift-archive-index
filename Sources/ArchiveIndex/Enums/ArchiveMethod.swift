@@ -19,6 +19,7 @@ public enum ArchiveMethod: Sendable, Equatable {
     /// A zip method this package does not unpack (bzip2, LZMA, zstd…), by its number.
     case other(Int)
 
+    /// The method a zip header records by number: 0 stored, 8 DEFLATE, anything else by its number.
     init(zipMethod: Int) {
         switch zipMethod { case 0: self = .stored; case 8: self = .deflate; default: self = .other(zipMethod) }
     }
