@@ -5,6 +5,7 @@
 //  An archive read: its kind, its members and their totals.
 //
 //  Created by David Sherlock on 9/24/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

@@ -5,6 +5,7 @@
 //  A zip's central directory, read without unpacking anything; one member unpacked on demand.
 //
 //  Created by David Sherlock on 9/24/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

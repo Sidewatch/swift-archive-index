@@ -5,6 +5,7 @@
 //  Real tars from the system's tar tool in its pax and GNU shapes, and the refusals.
 //
 //  Created by David Sherlock on 9/24/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import XCTest

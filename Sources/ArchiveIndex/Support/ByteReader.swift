@@ -5,6 +5,7 @@
 //  Little-endian integers and slices out of a Data, bounds-checked.
 //
 //  Created by David Sherlock on 9/24/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation
