@@ -40,8 +40,10 @@ public enum TarIndex {
             let block = data.subdata(in: (data.startIndex + pos)..<(data.startIndex + pos + blockSize))
             if block.allSatisfy({ $0 == 0 }) { break }
             guard checksumValid(block, at: 0), let name = nameField(block, at: 0) else { throw ArchiveError.notAnArchive }
-            let size = paxSize ?? sizeField(block)
             let dataStart = pos + blockSize
+            // A size the header cannot mean — unreadable, negative, or past the file — is a lie
+            // about the data; nothing after it can be trusted to start on a header.
+            guard let size = paxSize ?? sizeField(block), size >= 0, size <= data.count - dataStart else { throw ArchiveError.truncated }
             let type = block[block.startIndex + 156]
             let next = dataStart + (size + blockSize - 1) / blockSize * blockSize
             switch type {
@@ -51,9 +53,8 @@ public enum TarIndex {
                 let records = paxRecords(
                     data.subdata(in: (data.startIndex + dataStart)..<min(data.endIndex, data.startIndex + dataStart + size)))
                 if let p = records["path"] { longName = p }
-                if let s = records["size"].flatMap(Int.init) { paxSize = s }
+                if let s = records["size"].flatMap(Int.init), s >= 0 { paxSize = s }
             case 0, UInt8(ascii: "0"), UInt8(ascii: "7"), UInt8(ascii: "5"):
-                guard dataStart + size <= data.count else { throw ArchiveError.truncated }
                 let path = longName ?? name
                 let isDirectory = type == UInt8(ascii: "5") || path.hasSuffix("/")
                 out.append(
@@ -92,10 +93,16 @@ public enum TarIndex {
         let cut = d.prefix { $0 != 0 }
         return String(data: cut, encoding: .utf8) ?? String(data: cut, encoding: .isoLatin1) ?? ""
     }
-    /// A numeric header field: ASCII octal, or GNU base-256 when the high bit is set.
+    /// A numeric header field: ASCII octal, or GNU base-256 when the high bit is set; nil when it
+    /// is neither, or holds more bits than an `Int` (a lie no real archive tells).
     static func octal(_ d: Data) -> Int? {
         if let first = d.first, first & 0x80 != 0 {  // base-256 (GNU) for sizes past 8 GB
-            return d.dropFirst().reduce(Int(first & 0x7F)) { $0 << 8 | Int($1) }
+            var value = Int(first & 0x7F)
+            for byte in d.dropFirst() {
+                guard value <= Int.max >> 8 else { return nil }
+                value = value << 8 | Int(byte)
+            }
+            return value
         }
         let text = string(d).trimmingCharacters(in: CharacterSet(charactersIn: " \0"))
         return Int(text, radix: 8)
@@ -109,8 +116,8 @@ public enum TarIndex {
         let prefix = magic(block, at: at) ? string(field(block, at + 345, 155)) : ""
         return prefix.isEmpty ? name : prefix + "/" + name
     }
-    /// The member's data size in bytes.
-    static func sizeField(_ block: Data) -> Int { octal(field(block, 124, 12)) ?? 0 }
+    /// The member's data size in bytes; nil when the field is not a number.
+    static func sizeField(_ block: Data) -> Int? { octal(field(block, 124, 12)) }
     /// The member's modification time (seconds since 1970).
     static func mtimeField(_ block: Data) -> Date? { octal(field(block, 136, 12)).map { Date(timeIntervalSince1970: TimeInterval($0)) } }
     /// Whether the header sums to its recorded checksum, the checksum field itself counted as

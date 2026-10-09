@@ -30,3 +30,11 @@ again, and keep *Known non-issues* current so the next pass skips them.
 
 - 24 Sep 2026 — written; nine tests; mutants checked: ZIP64 extra ignored (4 failures), tar long
   names dropped (2), tree left unsorted (4).
+- 9 Oct 2026 — corrupt-input pass (`HostileArchiveTests`, six tests). Fixed: a ZIP64 end record claiming
+  trillions of entries made `entries(in:)` reserve for them (the unfixed reader died asking for 87 TB; the
+  reserve is now bounded by the bytes after the directory offset); a tar size field that overflows an `Int`
+  (base-256 all ones), is negative, or runs past the file now throws `truncated` instead of wrapping into a
+  negative block step (`octal` refuses more bits than an `Int`, `sizeField` is optional, one guard covers every
+  member type); a negative pax `size` record is ignored. Mutants: the unfixed reader crashes one test and fails
+  two. Checked and sound: a member claiming 4 GB lists and refuses to unpack (`ByteReader`), `../../x` is shown
+  under a `..` folder and unpacked under its last component only, a ten-level path folds into ten folders.

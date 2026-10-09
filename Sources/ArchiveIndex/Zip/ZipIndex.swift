@@ -42,8 +42,11 @@ public enum ZipIndex {
         let r = ByteReader(data: data)
         guard let end = endRecordOffset(r) else { throw ArchiveError.notAnArchive }
         let directory = try directoryLocation(r, endRecord: end)
+        guard directory.offset >= 0, directory.offset <= data.count else { throw ArchiveError.truncated }
         var out: [ArchiveEntry] = []
-        out.reserveCapacity(directory.count)
+        // A header is at least 46 bytes, so the bytes after the offset bound how many a record
+        // can truthfully claim; a ZIP64 count in the trillions must not be reserved for.
+        out.reserveCapacity(min(directory.count, (data.count - directory.offset) / 46))
         var pos = directory.offset
         for _ in 0..<directory.count {
             guard let entry = header(r, at: &pos) else { throw ArchiveError.truncated }
