@@ -18,4 +18,6 @@ directory, not its size.
 - Tests build real archives with `/usr/bin/zip` and `/usr/bin/tar` (`COPYFILE_DISABLE=1`, or
   bsdtar adds `._` AppleDouble members for the fixtures' extended attributes) and one ZIP64 by hand.
 
+Read `CONTRIBUTING.md` for the folder layout and the pull-request rules.
+
 @CONTRIBUTING.md

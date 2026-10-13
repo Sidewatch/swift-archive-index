@@ -46,8 +46,8 @@ let bytes = try Archive.data(for: entry, kind: listing.kind, in: url)   // store
 ## For agents
 
 Read `CONTRIBUTING.md` first: the folder layout and the PR rules. `swift test` is the whole
-check, and a new test must fail before the change it covers. `CLAUDE.md` / `AGENTS.md` carry a
-module map.
+check, and a new test must fail before the change it covers. `AGENTS.md` carries a
+module map (`CLAUDE.md` imports it).
 
 ## License
 
