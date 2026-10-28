@@ -4,12 +4,12 @@ What is inside an archive, read from its directory without unpacking it — and 
 
 ## Features
 
-- 📦 **Listing without unpacking** — `Archive.listing(at:)` reads the directory only; the kind is decided by the bytes, never the name
-- 🌳 **A tree** — `listing.tree`: folders first, Finder order, folder sizes summed
-- 🔓 **One member on demand** — `Archive.data(for:kind:in:)`, stored or DEFLATE (through Compression's raw inflate)
-- 🗜 **ZIP64 and every tar dialect** — ustar, pax, GNU long names, old v7
-- 🧾 **Honest refusals** — `ArchiveError`: not an archive, truncated, an encrypted member, a method not unpacked here (bzip2, LZMA, zstd), a corrupt DEFLATE stream
-- 🪶 **Zero dependencies** — Foundation and Compression
+- **Listing without unpacking** — `Archive.listing(at:)` reads the directory only; the kind is decided by the bytes, never the name
+- **A tree** — `listing.tree`: folders first, Finder order, folder sizes summed
+- **One member on demand** — `Archive.data(for:kind:in:)`, stored or DEFLATE (through Compression's raw inflate)
+- **ZIP64 and every tar dialect** — ustar, pax, GNU long names, old v7
+- **Honest refusals** — `ArchiveError`: not an archive, truncated, an encrypted member, a method not unpacked here (bzip2, LZMA, zstd), a corrupt DEFLATE stream
+- **Zero dependencies** — Foundation and Compression
 
 ## Requirements
 
