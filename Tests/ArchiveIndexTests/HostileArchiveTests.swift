@@ -155,4 +155,24 @@ final class HostileArchiveTests: XCTestCase {
         XCTAssertEqual(tree.first?.size, 3)
         XCTAssertEqual(tree.first?.fileCount, 1)
     }
+
+    func testAMemberThatInflatesPastItsDeclaredSizeIsStoppedThere() throws {
+        // Eight megabytes of zeros pack to a few kilobytes; the member claims to be 100 bytes.
+        let zeros = Data(count: 8 << 20)
+        let packed = try (zeros as NSData).compressed(using: .zlib) as Data
+        XCTAssertLessThan(packed.count, 64 << 10)
+        let stopped = ZipIndex.inflate(packed, exactly: 100)
+        XCTAssertNil(stopped.data)
+        XCTAssertLessThanOrEqual(stopped.produced, 100 + 64 * 1024, "stopped within one piece of the declared size, not after all of it")
+        let whole = ZipIndex.inflate(packed, exactly: zeros.count)
+        XCTAssertEqual(whole.data, zeros, "a member that is what it says unpacks whole")
+        XCTAssertNil(ZipIndex.inflate(Data("not deflate".utf8), exactly: 11).data)
+    }
+
+    func testAMemberDeclaringMoreThanTheLimitIsRefusedBeforeItIsRead() {
+        let huge = ArchiveEntry(
+            path: "big.bin", size: Archive.unpackLimit + 1, compressedSize: 10, isDirectory: false, modified: nil, method: .deflate)
+        let nowhere = URL(fileURLWithPath: "/nonexistent/archive.zip")
+        XCTAssertThrowsError(try Archive.data(for: huge, kind: .zip, in: nowhere)) { XCTAssertEqual($0 as? ArchiveError, .memberTooLarge) }
+    }
 }

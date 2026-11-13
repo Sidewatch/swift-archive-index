@@ -22,4 +22,6 @@ public enum ArchiveError: Error, Equatable, Sendable {
     case encrypted
     /// The member's unpacked bytes could not be produced (a corrupt DEFLATE stream).
     case corruptMember
+    /// The member unpacks to more than ``Archive/unpackLimit`` bytes: it is listed, not unpacked.
+    case memberTooLarge
 }

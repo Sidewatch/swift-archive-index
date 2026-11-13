@@ -31,8 +31,15 @@ public enum Archive {
         }
     }
 
-    /// One member of the archive at `url`, unpacked.
+    /// The most bytes one member is unpacked to (1 GiB). A member is unpacked into memory, and its
+    /// size is the archive's word: a few megabytes of DEFLATE can honestly declare fifty gigabytes
+    /// of zeros.
+    public static let unpackLimit = 1 << 30
+
+    /// One member of the archive at `url`, unpacked. Throws ``ArchiveError/memberTooLarge`` for a
+    /// member past ``unpackLimit``, before reading any of it.
     public static func data(for entry: ArchiveEntry, kind: ArchiveKind, in url: URL) throws -> Data {
+        guard entry.size <= unpackLimit else { throw ArchiveError.memberTooLarge }
         switch kind {
         case .zip: return try ZipIndex.data(for: entry, in: url)
         case .tar: return try TarIndex.data(for: entry, in: url)

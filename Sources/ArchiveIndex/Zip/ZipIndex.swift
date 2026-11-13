@@ -8,6 +8,7 @@
 //  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
+import Compression
 import Foundation
 
 /// A zip archive as its CENTRAL DIRECTORY describes it (APPNOTE 4.3): the end-of-central-
@@ -55,6 +56,36 @@ public enum ZipIndex {
         return out
     }
 
+    /// Raw DEFLATE unpacked a piece at a time, stopped the moment it has produced more than the
+    /// `size` the member declares: a stream that goes on past its declared size is corrupt (or a
+    /// bomb), and is never held whole to find that out. `data` is nil unless exactly `size` bytes
+    /// came; `produced` is how many were made before stopping.
+    static func inflate(_ raw: Data, exactly size: Int, chunk: Int = 64 * 1024) -> (data: Data?, produced: Int) {
+        let stream = UnsafeMutablePointer<compression_stream>.allocate(capacity: 1)
+        defer { stream.deallocate() }
+        guard compression_stream_init(stream, COMPRESSION_STREAM_DECODE, COMPRESSION_ZLIB) == COMPRESSION_STATUS_OK else { return (nil, 0) }
+        defer { compression_stream_destroy(stream) }
+        let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: chunk)
+        defer { buffer.deallocate() }
+        var out = Data()
+        out.reserveCapacity(min(size, 16 << 20))
+        var finished = false
+        raw.withUnsafeBytes { (source: UnsafeRawBufferPointer) in
+            guard let base = source.bindMemory(to: UInt8.self).baseAddress else { return }
+            stream.pointee.src_ptr = base
+            stream.pointee.src_size = source.count
+            while out.count <= size {
+                stream.pointee.dst_ptr = buffer
+                stream.pointee.dst_size = chunk
+                let status = compression_stream_process(stream, Int32(COMPRESSION_STREAM_FINALIZE.rawValue))
+                out.append(buffer, count: chunk - stream.pointee.dst_size)
+                if status == COMPRESSION_STATUS_END { finished = true; return }
+                guard status == COMPRESSION_STATUS_OK else { return }
+            }
+        }
+        return (finished && out.count == size ? out : nil, out.count)
+    }
+
     /// One member's unpacked bytes.
     public static func data(for entry: ArchiveEntry, in url: URL) throws -> Data {
         try data(for: entry, in: try mapped(url))
@@ -73,9 +104,8 @@ public enum ZipIndex {
         case .stored: return raw
         case .deflate:
             if entry.compressedSize == 0 { return Data() }
-            guard let inflated = try? (raw as NSData).decompressed(using: .zlib) as Data, inflated.count == entry.size else {
-                throw ArchiveError.corruptMember
-            }
+            guard entry.size <= Archive.unpackLimit else { throw ArchiveError.memberTooLarge }
+            guard let inflated = inflate(raw, exactly: entry.size).data else { throw ArchiveError.corruptMember }
             return inflated
         case .other(let m): throw ArchiveError.unsupportedMethod(m)
         }
