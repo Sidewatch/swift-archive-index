@@ -39,7 +39,7 @@ public final class ArchiveNode: @unchecked Sendable {
             $0.isDirectory != $1.isDirectory ? $0.isDirectory : $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
         }
         for child in children { child.settle() }
-        if isDirectory { size = children.reduce(0) { $0 + $1.size } }
+        if isDirectory { size = children.reduce(0) { $0.addingSaturated($1.size) } }
     }
 
     /// How many files (not folders) the node holds, itself included when it is one.

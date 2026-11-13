@@ -116,4 +116,43 @@ final class HostileArchiveTests: XCTestCase {
         XCTAssertThrowsError(try ZipIndex.data(for: entries[0], in: zip)) { XCTAssertEqual($0 as? ArchiveError, .truncated) }
         XCTAssertEqual(ArchiveTree.build(entries).first?.name, "..", "a parent-relative path is shown as written, under a `..` folder")
     }
+
+    func testAZip64LocatorPointingAtTheEndOfAnIntIsRefusedNotTrappedOn() {
+        // The locator names an end record at Int.max: reading four bytes there must not add past an Int.
+        let locator = le32(0x0706_4B50) + le32(0) + le64(Int.max) + le32(1)
+        var end = le32(0x0605_4B50) + le16(0) + le16(0) + le16(0xFFFF) + le16(0xFFFF)
+        end += le32(0xFFFF_FFFF) + le32(0xFFFF_FFFF) + le16(0)
+        XCTAssertThrowsError(try ZipIndex.entries(in: locator + end)) {
+            XCTAssertTrue([ArchiveError.truncated, .notAnArchive].contains($0 as? ArchiveError), "\($0)")
+        }
+        let reader = ByteReader(data: Data(count: 16))
+        XCTAssertNil(reader.u32(Int.max))
+        XCTAssertNil(reader.bytes(8, Int.max))
+        XCTAssertNil(reader.u64(0 + 8 + 1))
+    }
+
+    func testDeclaredSizesThatSumPastAnIntAreHeldNotTrappedOn() {
+        let huge = (0..<4).map {
+            ArchiveEntry(path: "big-\($0).bin", size: Int.max / 2, compressedSize: 0, isDirectory: false, modified: nil, method: .stored)
+        }
+        XCTAssertEqual(ArchiveListing(kind: .zip, entries: huge).totalSize, Int.max)
+        let inAFolder = huge.map {
+            ArchiveEntry(path: "d/" + $0.path, size: $0.size, compressedSize: 0, isDirectory: false, modified: nil, method: .stored)
+        }
+        XCTAssertEqual(ArchiveTree.build(inAFolder).first?.size, Int.max)
+    }
+
+    func testAPathOfFortyThousandLevelsIsFoldedToTheDepthLimit() {
+        let deep = String(repeating: "a/", count: 40_000) + "leaf.txt"
+        let tree = ArchiveTree.build([
+            ArchiveEntry(path: deep, size: 3, compressedSize: 3, isDirectory: false, modified: nil, method: .stored)
+        ])
+        var depth = 0
+        var node = tree.first
+        while let current = node, current.isDirectory { depth += 1; node = current.children.first }
+        XCTAssertEqual(depth, ArchiveTree.depthLimit - 1)
+        XCTAssertEqual(node?.path, deep, "the file keeps the path the archive wrote")
+        XCTAssertEqual(tree.first?.size, 3)
+        XCTAssertEqual(tree.first?.fileCount, 1)
+    }
 }

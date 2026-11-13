@@ -38,3 +38,4 @@ again, and keep *Known non-issues* current so the next pass skips them.
   member type); a negative pax `size` record is ignored. Mutants: the unfixed reader crashes one test and fails
   two. Checked and sound: a member claiming 4 GB lists and refuses to unpack (`ByteReader`), `../../x` is shown
   under a `..` folder and unpacked under its last component only, a ten-level path folds into ten folders.
+- 13 Nov 2026 — review. Fixed: a ZIP64 offset, size or count near `Int.max` trapped `ByteReader`'s bounds sums (a 64-bit field past 2^48 is refused now, and the guards subtract); declared sizes that sum past an `Int` trapped the totals (held at `Int.max`); a path of tens of thousands of levels recursed once per level in `ArchiveTree` (built level by level, folded at `depthLimit` 256). Three `HostileArchiveTests`, each failing on its own mutant. Left open: `ZipIndex.data` inflates a member with no cap on the output.

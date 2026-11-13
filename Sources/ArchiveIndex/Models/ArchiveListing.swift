@@ -26,7 +26,7 @@ public struct ArchiveListing: Sendable {
     /// Members listed as directories (folders a path merely implies are not counted).
     public var folderCount: Int { entries.lazy.filter { $0.isDirectory }.count }
     /// Every file's unpacked size, summed.
-    public var totalSize: Int { entries.reduce(0) { $0 + ($1.isDirectory ? 0 : $1.size) } }
+    public var totalSize: Int { entries.reduce(0) { $0.addingSaturated($1.isDirectory ? 0 : $1.size) } }
     /// The members folded into folders.
     public var tree: [ArchiveNode] { ArchiveTree.build(entries) }
 }
